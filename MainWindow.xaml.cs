@@ -17,11 +17,11 @@ namespace WebUI
     /// </summary>
     public partial class WebUIWindow : System.Windows.Window
     {
-        public readonly static Brush DefaultBackground= new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
-        public readonly static Brush PenetrateBackground = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
+        public readonly static Brush DefaultBackground = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
+        public readonly static Brush PenetrateBackground = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
         public string Url { get; private set; }
         private string Html;
-        private bool MainWindow = true;
+        public bool MainWindow { get; private set; } = true;
         private WebUIWindow ParentWindow;
         public IntPtr Handle;
         public readonly JsMessageHandler jsMessageHandler;
@@ -38,9 +38,10 @@ namespace WebUI
             this.multipleJsMessageHandler = new MultipleJsMessageHandler();
             this.multipleJsMessageHandler.Register(this.jsMessageHandler);
             this.multipleJsMessageHandler.Register(new JsMessageHandler(this, new Device()));
-         
+
+
         }
-        public WebUIWindow(WebUIWindow parent, string source,bool isHtml) : this()
+        public WebUIWindow(WebUIWindow parent, string source, bool isHtml) : this()
         {
             if (isHtml) this.Html = source;
             else this.Url = source;
@@ -63,15 +64,10 @@ namespace WebUI
                 }
                 this.Url = Global.StartArgs[0];
             }
-            this.Handle = new WindowInteropHelper(this).Handle;
             //NativeWindow nativeWindow = new WebUIWindowWndProc(this);
-            WindowChrome Resizable_BorderLess_Chrome = new WindowChrome();
-            Resizable_BorderLess_Chrome.GlassFrameThickness = new Thickness(0);
-            Resizable_BorderLess_Chrome.CornerRadius = new CornerRadius(0);
-            Resizable_BorderLess_Chrome.CaptionHeight = 0;
-            WindowChrome.SetWindowChrome(this, Resizable_BorderLess_Chrome);
+            this.Handle = new WindowInteropHelper(this).Handle;
             this.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
-            
+
         }
 
         private void CoreWebView2_WebMessageReceived(object sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
@@ -94,25 +90,33 @@ namespace WebUI
             }
             else if (jsData.Type == 1)
             {
-                object value = this.multipleJsMessageHandler.GetHander(jsData.Name)?.Invoke(jsData,this);
+                object value = this.multipleJsMessageHandler.GetHander(jsData.Name)?.Invoke(jsData, this);
                 this.WebView.CoreWebView2.PostWebMessageAsJson(new JsResult(jsData.Type, jsData.Id, jsData.Name, value).ToJson());
             }
             else if (jsData.Type == 3)
             {
-                this.multipleJsMessageHandler.GetHander(jsData.Name)?.AddObjDescribes(jsData,this);
+                this.multipleJsMessageHandler.GetHander(jsData.Name)?.AddObjDescribes(jsData, this);
             }
-            else if (jsData.Type == 10001 )//parent call function or get property,parent set property
+            else if (jsData.Type == 10001)//parent call function or get property,parent set property
             {
                 this.multipleJsMessageHandler.GetHander(jsData.Name)?.InvokeJs(jsData, (value) =>
                 {
-                    this.WebView.CoreWebView2.PostWebMessageAsJson(new JsResult(1,jsData.Id,jsData.Name,value).ToJson());
+                    this.WebView.CoreWebView2.PostWebMessageAsJson(new JsResult(1, jsData.Id, jsData.Name, value).ToJson());
                 });
             }
         }
 
         private void WebView_CoreWebView2InitializationCompleted(object sender, Microsoft.Web.WebView2.Core.CoreWebView2InitializationCompletedEventArgs e)
         {
-            if (this.MainWindow&&(Global.StartArgs.Length <= 1 || Global.StartArgs[1] != "1")) this.Hide();
+            if (this.MainWindow)
+            {
+                if (Global.StartArgs.Length > 1 && Global.StartArgs[1] == "1")
+                {
+                    this.SetShowInTaskbar = false;
+                    this.ShowInTaskbar = true;
+                }
+                else if (Global.StartArgs.Length <= 1 || Global.StartArgs[1] != "1") this.Hide();
+            }
             this.WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(Properties.Resources.web_ui_sdk_min);
             if (this.Url == null) this.WebView.CoreWebView2.NavigateToString(this.Html);
             else this.WebView.Source = new Uri(this.Url);
@@ -132,11 +136,16 @@ namespace WebUI
         private void CoreWebView2_DOMContentLoaded(object sender, Microsoft.Web.WebView2.Core.CoreWebView2DOMContentLoadedEventArgs e)
         {
             this.WebView.CoreWebView2.ExecuteScriptAsync($"var st= document.createElement('style');document.body.appendChild(st);st.innerHTML = `{Properties.Resources.style_min}`;");
+            Debug.WriteLine(this.Width);
         }
 
         private void Main_Closed(object sender, EventArgs e)
         {
             this.multipleJsMessageHandler.Clear();
+            if (this.MainWindow)
+            {
+                Process.GetCurrentProcess().Kill();
+            }
         }
         public class WebUIWindowWndProc : NativeWindow
         {

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -73,11 +74,11 @@ namespace WebUI.Handler
                     else if (parameter.ParameterType == typeof(JsFunction) && len > i && jsInvoke.Args[i] != null)
                     {
                         var c = jsInvoke.Args[i].GetType();
-                        if (jsInvoke.Args[i].GetType() == typeof(object[]))
+                        if (jsInvoke.Args[i].GetType() == typeof(JArray))
                         {
-                            object[] objects = (object[])jsInvoke.Args[i];
+                            JArray objects = (JArray)jsInvoke.Args[i];
                             var a = objects[0].GetType();
-                            if (objects.Length == 2 && objects[0]?.ToString() == "__function__")
+                            if (objects.Count == 2 && ((JValue)objects[0])?.Value?.ToString() == "__function__")
                             {
                                 string id = objects[1].ToString();
                                 list.Add(new JsFunction(current.WebView, id));
@@ -155,6 +156,7 @@ namespace WebUI.Handler
                     });
                 }
             }
+            
             return objDescribes;
         }
         public void AddObjDescribes(JsData jsData, WebUIWindow current)
@@ -178,11 +180,12 @@ namespace WebUI.Handler
             string fullName = "native." + this.jsObject.__name;
             if (jsData.IsField && jsData.Args.Length > 0)
             {
-                this.Window.WebView.CoreWebView2.ExecuteScriptAsync(fullName + "." + jsData.Member + "=JSON.parse('" + jsData.Args[0].ToJson() + "')");
+                this.Window.WebView.CoreWebView2.ExecuteScriptAsync(fullName + "." + jsData.Member + "=JSON.parse(`" + jsData.Args[0].ToJson().Replace("\\n", "\\\\n") + "`)");
             }
             else
             {
-                Task<string> task = this.Window.WebView.CoreWebView2.ExecuteScriptAsync("(()=>{_args_='" + jsData.Args.ToJson() + "';return " + fullName + "." + jsData.Member + (jsData.IsField ? "" : ".apply(null,JSON.parse(_args_))") + "})()");
+                string script = "(()=>{_args_=`" + jsData.Args.ToJson().Replace("\\n","\\\\n") + "`;return " + fullName + "." + jsData.Member + (jsData.IsField ? "" : ".apply(null,JSON.parse(_args_))") + "})()";
+                Task<string> task = this.Window.WebView.CoreWebView2.ExecuteScriptAsync(script);
                 task.ContinueWith((t) =>
                 {
                     this.Window.Dispatcher.Invoke(() =>

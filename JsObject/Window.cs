@@ -2,6 +2,7 @@
 using Microsoft.Web.WebView2.Core;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -65,6 +66,27 @@ namespace WebUI.JsObject
                         return null;
                 }
             }
+            set
+            {
+                this._window.Dispatcher.Invoke(() =>
+                {
+                    switch (value)
+                    {
+                        case "max":
+                            this._window.WindowState = System.Windows.WindowState.Maximized;
+                            break;
+                        case "min":
+                            this._window.WindowState = System.Windows.WindowState.Minimized;
+                            break;
+                        case "normal":
+                            this._window.WindowState = System.Windows.WindowState.Normal;
+                            break;
+                        default:
+                            break;
+                    }
+                });
+                
+            }
         }
         public bool topmost
         {
@@ -83,7 +105,7 @@ namespace WebUI.JsObject
                 this._window.ShowInTaskbar = value;
                 if (this._window.SetShowInTaskbar && !value)
                     this._window.SetShowInTaskbar = value;
-            });
+});
             get => this._window.Dispatcher.Invoke(() => this._window.ShowInTaskbar);
         }
         public bool disableDevTool
@@ -91,6 +113,7 @@ namespace WebUI.JsObject
             set => this._window.Dispatcher.Invoke(() => this._window.WebView.CoreWebView2.Settings.AreDevToolsEnabled = value);
             get => this._window.Dispatcher.Invoke(() => this._window.WebView.CoreWebView2.Settings.AreDevToolsEnabled);
         }
+        public bool allowClose { set; get; }
         private List<Rectangle> DragAreaList = new List<Rectangle>();
         private List<Rectangle> DragNotAreaList = new List<Rectangle>();
         private Dictionary<string, object> _dataMap = new Dictionary<string, object>();
@@ -114,13 +137,7 @@ namespace WebUI.JsObject
                 this._window.Height += h;
             });
         }
-        public void onResize(JsFunction callback)
-        {
-            this._window.SizeChanged += (o, e) =>
-            {
-                callback?.Invoke(e.NewSize.Width, e.NewSize.Height);
-            };
-        }
+        
         public void addDragMoveArea(int x, int y, int w, int h, bool exclude)
         {
             if (exclude)
@@ -135,19 +152,10 @@ namespace WebUI.JsObject
         }
         public void close()
         {
-            this._window.Dispatcher.Invoke(() => this._window.Close());
-        }
-        public void stateMin()
-        {
-            this._window.Dispatcher.Invoke(() => this._window.WindowState = System.Windows.WindowState.Minimized);
-        }
-        public void stateMax()
-        {
-            this._window.Dispatcher.Invoke(() => this._window.WindowState = System.Windows.WindowState.Maximized);
-        }
-        public void stateNormal()
-        {
-            this._window.Dispatcher.Invoke(() => this._window.WindowState = System.Windows.WindowState.Normal);
+            if (this._window.MainWindow)
+                Process.GetCurrentProcess().Kill();
+            else
+                this._window.Dispatcher.Invoke(() => this._window.Close());
         }
         public void startCenter()
         {
@@ -242,6 +250,10 @@ namespace WebUI.JsObject
             }, null);
 
         }
+        public void hideInTaskView()
+        {
+            User32.SetWindowLong(this._window.Handle, User32.GWL_EX_STYLE, (User32.GetWindowLong(this._window.Handle, User32.GWL_EX_STYLE) | User32.WS_EX_TOOLWINDOW) & ~User32.WS_EX_APPWINDOW);
+        }
 
         public void setData(string key, object value)
         {
@@ -267,9 +279,10 @@ namespace WebUI.JsObject
         }
         public void onClose(JsFunction callback)
         {
-            this._window.Closed += (sender, e) =>
+            this._window.Closing += (sender, e) =>
             {
-                callback?.Invoke();
+                 callback?.Invoke();
+                e.Cancel = !this.allowClose;
             };
         }
         public void onActivated(JsFunction callback)
@@ -290,9 +303,16 @@ namespace WebUI.JsObject
         {
             this._window.LocationChanged += (sender, e) =>
             {
-                callback?.Invoke();
+                callback?.Invoke(this._window.Left,this._window.Top);
             };
 
+        }
+        public void onResize(JsFunction callback)
+        {
+            this._window.SizeChanged += (o, e) =>
+            {
+                callback?.Invoke(e.NewSize.Width, e.NewSize.Height);
+            };
         }
     }
 }

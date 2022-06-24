@@ -70,23 +70,7 @@ namespace WebUI.Properties {
         }
         
         /// <summary>
-        ///   查找类似 const native = {};
-        ///(async() =&gt; {
-        ///    function strToObjStruct(str, obj) {
-        ///        let root = native;
-        ///        let keys = str.split(&apos;.&apos;);
-        ///        for (let i = 0; i &lt; keys.length; i++) {
-        ///            let key = keys[i];
-        ///            if (i == keys.length - 1 &amp;&amp; !root[key]) root[key] = obj;
-        ///            else if (!root[key]) root[key] = {};
-        ///            root = root[key];
-        ///        }
-        ///        return keys[keys.length - 1];
-        ///    }
-        ///    let sessionId = 0;
-        ///    let queue = {};
-        ///    let prefix = &apos;__&apos;
-        ///    let ojectDe [字符串的其余部分被截断]&quot;; 的本地化字符串。
+        ///   查找类似 const native={};window.native=native,(async()=&gt;{function e(e,t){let a=native,n=e.split(&quot;.&quot;);for(let e=0;e&lt;n.length;e++){let i=n[e];e!=n.length-1||a[i]?a[i]||(a[i]={}):a[i]=t,a=a[i]}return n[n.length-1]}let t=0,a={},n=&quot;__&quot;,i=&quot;__oject_describes&quot;,d=[&quot;window&quot;,&quot;window.parent&quot;,&quot;device&quot;];async function o(n){let i={};if(native.__oject_describes[n]=i,!await new Promise((e,d)=&gt;{a[t]={callback:e,target:i},chrome.webview.postMessage({Type:0,Id:t++,Name:n,Args:[]})}))return e(n,new Proxy(i,{get:(e,i,d)=&gt;{if(null==e[&quot;__&quot; [字符串的其余部分被截断]&quot;; 的本地化字符串。
         /// </summary>
         internal static string web_ui_sdk_min {
             get {

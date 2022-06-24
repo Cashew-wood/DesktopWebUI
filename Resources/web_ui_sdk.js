@@ -1,6 +1,6 @@
 const native = {};
 window.native = native;
-(async() => {
+(async () => {
     function strToObjStruct(str, obj) {
         let root = native;
         let keys = str.split('.');
@@ -37,30 +37,32 @@ window.native = native;
         } else if (e.data.Type == 1) {
             queue[e.data.Id] && queue[e.data.Id](e.data.Data);
         } else if (e.data.Type == 2) {
-            queue[e.data.Id].method.call(queue[e.data.Id].that, e.data.Data);
-        }
-        delete queue[e.data.Id];
-        for (let key in queue) {
-            if (key < e.data.Id / 2 - 10) {
-                delete queue[key];
+            try {
+                queue[e.data.Id].method.apply(queue[e.data.Id].that, e.data.Data);
+            } catch {
+                console.log(e.data, queue[e.data.Id])
             }
         }
+        if (parseInt(e.data.Id) == e.data.Id) delete queue[e.data.Id];
     });
     async function register(key) {
         let target = {};
         native[ojectDescribesKey][key] = target;
+        msgdelay=setTimeout(()=>{//webview2 bug 偶尔不反馈
+            location.reload();
+        },100)
         if (await new Promise((resolve, reject) => {
-                queue[sessionId] = {
-                    callback: resolve,
-                    target
-                };
-                chrome.webview.postMessage({
-                    Type: 0,
-                    Id: sessionId++,
-                    Name: key,
-                    Args: []
-                })
-            })) return;
+            queue[sessionId] = {
+                callback: resolve,
+                target
+            };
+            chrome.webview.postMessage({
+                Type: 0,
+                Id: sessionId++,
+                Name: key,
+                Args: []
+            })
+        })) return;
         strToObjStruct(key, new Proxy(target, {
             get: (target, property, receiver) => {
                 if (target[prefix + property] == undefined) {
@@ -83,7 +85,7 @@ window.native = native;
                         });
                     });
                 } else {
-                    return function() {
+                    return function () {
                         let funParams = arguments;
                         let that = this;
                         return new Promise((resolve, reject) => {
@@ -91,7 +93,7 @@ window.native = native;
                             let args = [];
                             let funCount = 0;
                             for (let val of funParams) {
-                                if (typeof(val) == 'function') {
+                                if (typeof (val) == 'function') {
                                     let key = sessionId + ((funCount + 1) * 0.01);
                                     args.push(['__function__', key]);
                                     queue[key] = { that, method: val };
@@ -132,12 +134,13 @@ window.native = native;
                             Name: key,
                             IsField: true,
                             Member: property,
-                            Args: [typeof(value)]
+                            Args: [typeof (value)]
                         });
                     }
                     target[property] = value;
 
                 }
+                return true;
             }
         }));
         return target;
@@ -151,7 +154,10 @@ window.native = native;
             e.button == 0 & (mouseLeftDown = Date.now())
         })
         document.addEventListener('mousemove', (e) => {
-            mouseLeftDown && (Date.now() - mouseLeftDown) > 50 && native.window.dragWindow(e.pageX, e.pageY)
+            if (mouseLeftDown && (Date.now() - mouseLeftDown) > 50) {
+                mouseLeftDown = 0;
+                native.window.dragWindow(e.pageX, e.pageY)
+            }
 
         })
         document.addEventListener('mouseup', (e) => {
@@ -159,7 +165,7 @@ window.native = native;
         })
     }
     await init();
-    native.window.createWindow = async(name, url, isHtml) => {
+    native.window.createWindow = async (name, url, isHtml) => {
         if (isHtml == undefined && !url) {
             url = name;
             name = null;
@@ -172,6 +178,15 @@ window.native = native;
         let key = await native.window._createWindow(name, url, isHtml);
         let window = strToObjStruct(key, await register(key));
         native.window.subwindows[window].parent = native.window;
+        native.window.subwindows[window].data = new Proxy({}, {
+            get: (target, property) => {
+                return native.window.subwindows[window].getData(property);
+            },
+            set: (target, property, value) => {
+                native.window.subwindows[window].setData(property, value);
+                return true;
+            }
+        });
         return native.window.subwindows[window];
     }
     native.window.data = new Proxy({}, {
@@ -180,20 +195,23 @@ window.native = native;
         },
         set: (target, property, value) => {
             native.window.setData(property, value);
+            return true;
         }
     })
     if (native.window.parent) {
         native.window.parent.data = new Proxy({}, {
-            get: function(target, property) {
+            get: function (target, property) {
                 return native.window.parent.getData(property);
             },
-            set: function(target, property, value) {
+            set: function (target, property, value) {
                 native.window.parent.setData(property, value);
             }
         })
     }
+    native.isInit = true;
     window.dispatchEvent(new Event("native"));
     setTimeout(() => {
         chrome.webview.postMessage({ Type: -2 })
     }, 100);
+    console.log('init SDK')
 })()

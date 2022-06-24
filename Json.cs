@@ -1,4 +1,4 @@
-﻿using fastJSON;
+﻿using Newtonsoft.Json;
 using System;
 
 namespace WebUI
@@ -7,15 +7,15 @@ namespace WebUI
     {
         public static T FromJson<T>(string json)
         {
-            return JSON.ToObject<T>(json);
+            return JsonConvert.DeserializeObject<T>(json);
         }
-        public static object ParseValue(this Type type,string json)
+        public static object ParseValue(this Type type, string json)
         {
-            return JSON.ToObject(json,type);
+            return JsonConvert.DeserializeObject(json, type);
         }
         public static string ToJson(this object ths)
         {
-            return JSON.ToJSON(ths);
+            return JsonConvert.SerializeObject(ths);
         }
     }
 }

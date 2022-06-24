@@ -5,7 +5,11 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WebUI"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800" WindowStyle="None" AllowsTransparency="True" Loaded="Main_Loaded" ShowInTaskbar="False" Closed="Main_Closed">
-
+        Title="MainWindow" Height="450" Width="800" WindowStyle="None" AllowsTransparency="True" Loaded="Main_Loaded" ShowInTaskbar="False" Closed="Main_Closed" Visibility="Visible">
     <local:WebView x:Name="WebView" DefaultBackgroundColor="Transparent"/>
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome ResizeBorderThickness="7"></WindowChrome>
+    </WindowChrome.WindowChrome>
+ 
 </Window>
